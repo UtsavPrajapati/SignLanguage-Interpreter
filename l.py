@@ -4,9 +4,15 @@ import os
 
 import time
 
+from imutils import paths
 
+import tensorflow as tf
 
+    
 from keras.models import load_model
+
+
+import destination, trans
 
 ht =60 #thresh value
 bgSet = False
@@ -14,18 +20,33 @@ bgSubThreshold = 50
 learningRate = 0
 blurValue = 41  # GaussianBlur parameter
 
-imagefile="samples"
+imagefile=destination.images
+modelfile =destination.model
 
+listofwords = []
 
-trainsub = "how2"
+trainsub = "ka"
 
 motion = False
 current = "none"
 mtime = 0
 msettime = 0
+
+imagePaths = list(paths.list_images(imagefile))
+
+labels=[]
+
 # initialize the class labels
-CLASSES = ["Best of luck","love","you","no1","no2","how1","how2","A","C","B","D"]
+for x in imagePaths:
+   
+    label = x.split(os.path.sep)[-1].split(".")[0].split("-")[0]
+    if label not in labels:
+        labels.append(label)
+
+
+CLASSES = labels
 CLASSES.sort()
+print(CLASSES)
 
 def write(name,image):
     index = 0
@@ -36,8 +57,7 @@ def write(name,image):
     cv2.imwrite(imagefile+os.path.sep+Name,image)
     print(index)
     
-def peri(a):
-    return cv2.arcLength(a,False)
+
 
 def on_trackbar(a):
     global ht
@@ -61,7 +81,8 @@ def image_to_feature_vector(image, size=(32, 32)):
 
 # load the network
 print("[INFO] loading network architecture and weights...")
-model = load_model("simple_neural_network.hdf5")
+
+model = load_model(modelfile)
 
 cap = cv2.VideoCapture(0)
 
@@ -91,11 +112,10 @@ while True:
         contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         canvas = np.zeros(gray.shape, np.uint8)
         if(contours):
-            contours = max(contours, key=cv2.contourArea)
-            hull = cv2.convexHull(np.float32(contours))
-            cv2.drawContours(canvas, [contours], 0, (255,255,255), 2)
-            features = image_to_feature_vector(canvas) / 255.0
-            features = np.array([features])
+            contour = max(contours, key=cv2.contourArea)
+            #hull = cv2.convexHull(np.float32(contour))
+            cv2.drawContours(canvas, contours, -1, (255,255,255), 2)
+            
             
             
             features = image_to_feature_vector(canvas) / 255.0
@@ -106,7 +126,11 @@ while True:
             prediction = probs.argmax(axis=0)
 
             label = CLASSES[prediction]
-
+            frame = cv2.rectangle(frame,(0,0),(100,100),(0,0,0),-1)
+            
+            
+            
+            
             if "1" in label:
                 if True:
                     motion = True
@@ -117,21 +141,30 @@ while True:
                         motion = False
                         mlabel=label[:-1]
                         mtime=time.time()
+        cv2.imshow("mini",canvas)
         if mlabel!="***" and time.time()-mtime>2:
             mtime=0
             mlabel="***"
         if "1" not in label and "2" not in label:
-                cv2.putText(frame, label, (10, 35), cv2.FONT_HERSHEY_SIMPLEX,
-                        1.0, (0, 255, 0), 3)
+                '''cv2.putText(frame, label, (10, 35), cv2.FONT_HERSHEY_SIMPLEX,
+                        1.0, (0, 255, 0), 3)'''
+                frame=trans.nep(frame,label)
+                
         else:
             print(label)
         cv2.putText(frame, "last motion:"+mlabel, (300, 35), cv2.FONT_HERSHEY_SIMPLEX,
                         1.0, (0, 255, 0), 3)
-            
-            
-        cv2.imshow("mini",canvas)
+    
+   
+    if len(listofwords)>0:
+        frame = cv2.rectangle(frame,(0,400),(300,500),(1,0,0),-1)
+        frame=trans.nepSet(frame, listofwords)
+        
+        
+        
     cv2.imshow("frame",frame)
     wk = cv2.waitKey(1)
+    
     if wk == ord('b'):
         print('backgroud set')
         bgModel = cv2.createBackgroundSubtractorMOG2(0, bgSubThreshold)
@@ -146,3 +179,13 @@ while True:
         cap.release()
         cv2.destroyAllWindows()
         break
+    
+    elif wk == ord('w'):
+       
+        listofwords.append(label)
+        
+       
+    
+    elif wk == ord('e'):
+        listofwords=[]
+

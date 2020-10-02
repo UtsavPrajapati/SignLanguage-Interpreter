@@ -1,6 +1,3 @@
-
-
-
 # import the necessary packages
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
@@ -15,11 +12,15 @@ import numpy as np
 from scipy.sparse import coo_matrix
 from sklearn.utils import shuffle
 
+import os
 import cv2
 
-datano = 11
+import destination
 
-imagefile="samples"
+datano = len(destination.get_labels())+1
+imagefile=destination.images
+modelfile =destination.model
+
 
 def image_to_feature_vector(image, size=(32, 32)):
 	# resize the image to a fixed size, then flatten the image into
@@ -44,7 +45,7 @@ for (i, imagePath) in enumerate(imagePaths):
     label = imagePath.split(os.path.sep)[-1].split(".")[0].split("-")[0]
 
 	# construct a feature vector raw pixel intensities, then update
-	# the data matrix and labels list
+	# the data matrix and labels lis
     features = image_to_feature_vector(image)
     data.append(features)
     labels.append(label)
@@ -63,6 +64,8 @@ labels = le.fit_transform(labels)
 # generates a vector for each label where the index of the label
 # is set to `1` and all other entries to `0`
 data = np.array(data) / 255.0
+print(set(labels))
+print(datano)
 labels = np_utils.to_categorical(labels, datano)
 print("here")
 # partition the data into training and testing splits, using 75%
@@ -75,8 +78,9 @@ print("[INFO] constructing training/testing split...")
 
 # define the architecture of the network
 model = Sequential()
-model.add(Dense(768, input_dim=1024, init="uniform",
-	activation="relu"))
+model.add(Dense(768, input_dim=1024, kernel_initializer="uniform",
+                activation="relu"))
+
 model.add(Dense(384, activation="relu", kernel_initializer="uniform"))
 
 model.add(Dense(datano))
@@ -99,4 +103,4 @@ print("[INFO] loss={:.4f}, accuracy: {:.4f}%".format(loss,
 
 # dump the network architecture and weights to file
 print("[INFO] dumping architecture and weights to file...")
-model.save("model.hdf5")
+model.save(modelfile)
